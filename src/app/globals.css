@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------------
+   HyperFid design tokens. Light is the default; dark is its own selected set
+   (OS preference, or an explicit data-theme on <html>).
+   --------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --surface: #f7f7f5;
+  --card: #ffffff;
+  --card-2: #f1f0ec;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #7a7873;
+  --line: #e4e3dc;
+  --ring: rgba(91, 61, 245, 0.35);
+  --brand: #5b3df5;
+  --brand-hover: #4a2ee0;
+  --brand-soft: #eeeafe;
+  --on-brand: #ffffff;
+  --gold: #f5a623;
+  --good: #006300;
+  --good-soft: #e3f4e3;
+  --warn: #8a5a00;
+  --warn-soft: #fdf1d8;
+  --critical: #b42323;
+  --critical-soft: #fbe6e6;
+
+  /* charts (validated: dataviz reference palette, slots 1–2) */
+  --chart-surface: #ffffff;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface: #0d0d0d;
+    --card: #1a1a19;
+    --card-2: #232321;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #9a988f;
+    --line: #2c2c2a;
+    --ring: rgba(143, 123, 255, 0.45);
+    --brand: #8f7bff;
+    --brand-hover: #a594ff;
+    --brand-soft: #25204a;
+    --on-brand: #0b0b0b;
+    --gold: #fab219;
+    --good: #0ca30c;
+    --good-soft: #10260f;
+    --warn: #fab219;
+    --warn-soft: #2e2410;
+    --critical: #e66767;
+    --critical-soft: #331616;
+
+    --chart-surface: #1a1a19;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --grid: #2c2c2a;
+    --axis: #383835;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #0d0d0d;
+  --card: #1a1a19;
+  --card-2: #232321;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #9a988f;
+  --line: #2c2c2a;
+  --ring: rgba(143, 123, 255, 0.45);
+  --brand: #8f7bff;
+  --brand-hover: #a594ff;
+  --brand-soft: #25204a;
+  --on-brand: #0b0b0b;
+  --gold: #fab219;
+  --good: #0ca30c;
+  --good-soft: #10260f;
+  --warn: #fab219;
+  --warn-soft: #2e2410;
+  --critical: #e66767;
+  --critical-soft: #331616;
+
+  --chart-surface: #1a1a19;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --grid: #2c2c2a;
+  --axis: #383835;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-2: var(--card-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-soft: var(--brand-soft);
+  --color-on-brand: var(--on-brand);
+  --color-gold: var(--gold);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-critical: var(--critical);
+  --color-critical-soft: var(--critical-soft);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+html,
+body {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* --- Scan experience ------------------------------------------------------ */
+@keyframes hf-shimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes hf-pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  60% { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes hf-confetti {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+.hf-live-bg {
+  background-size: 200% 200%;
+  animation: hf-shimmer 3s linear infinite;
+}
+
+.hf-pop {
+  animation: hf-pop 480ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.hf-confetti-piece {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  animation: hf-confetti 2.8s ease-in forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hf-live-bg,
+  .hf-pop,
+  .hf-confetti-piece {
+    animation: none;
+  }
+}
+
+/* --- Print (QR sheets) ------------------------------------------------------ */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

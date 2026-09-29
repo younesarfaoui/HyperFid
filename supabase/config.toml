@@ -1,0 +1,48 @@
+# Supabase CLI configuration (local development).
+# Hosted projects: mirror the [auth] settings in Dashboard → Authentication.
+project_id = "hyperfid"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+
+[local_smtp]
+enabled = true
+port = 54324
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/confirm"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+# Accounts are provisioned by the super admin (invite) — no public sign-up.
+enable_signup = false
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = true
+
+[auth.email.template.invite]
+subject = "Votre accès HyperFid"
+content_path = "./supabase/templates/invite.html"
