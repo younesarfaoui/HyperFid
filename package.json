@@ -7,10 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:db": "bash scripts/test-db.sh",
-    "bootstrap:users": "tsx --env-file=.env.local scripts/bootstrap-users.ts"
+    "bootstrap:users": "tsx --env-file=.env.local scripts/bootstrap-users.ts",
+    "wallet:smoke": "tsx --conditions=react-server --env-file=.env.local scripts/wallet-smoke.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

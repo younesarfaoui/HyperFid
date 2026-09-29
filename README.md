@@ -127,10 +127,13 @@ where id = (select id from auth.users where email = 'you@example.com');
 | Command | What it does |
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js |
-| `npm run lint` / `typecheck` | ESLint / `tsc --noEmit` |
+| `npm run lint` / `typecheck` | ESLint / route-type generation (`next typegen`) + `tsc --noEmit` |
 | `npm test` | Vitest unit tests (device hashing, pass payload, CSV, validation) |
 | `npm run test:db` | RLS & business-rule suite (`supabase/tests/rls.test.sql`) on a throwaway local Postgres. Set `DATABASE_URL` to run it against `supabase start` instead |
 | `npm run bootstrap:users` | Creates the first admin accounts through the Auth admin API |
+| `npm run wallet:smoke` | Creates and updates one real test pass through WalletWallet (reads `WALLETWALLET_API_KEY` from `.env.local`; uses 2 passes of your quota) |
+
+**CI** (`.github/workflows/ci.yml`) runs lint, typecheck, unit tests and the build on every PR and push to `main`. It also runs the database suite against real Supabase Postgres (`supabase db start`).
 
 `supabase/tests/rls.test.sql` covers:
 - tenant isolation and privilege escalation

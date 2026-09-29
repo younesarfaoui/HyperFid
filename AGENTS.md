@@ -15,4 +15,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - The public scan (`/s/[code]`) must stay side-effect free on GET; the claim runs from a user gesture through `claim_qr_scan`.
 - Form Server Actions return `FormState` from `src/lib/form-state.ts`; use `failure(msg, formData, keys)` so forms keep user input after React's automatic form reset.
 - Schema changes: add a new migration file, extend `supabase/tests/rls.test.sql`, update `src/types/database.ts`.
-- Checks before pushing: `npm run lint && npm run typecheck && npm test && npm run test:db && npm run build`.
+- Checks before pushing: `npm run lint && npm run typecheck && npm test && npm run test:db && npm run build`. CI (`.github/workflows/ci.yml`) enforces the same gate, with the database suite running on real Supabase Postgres.
