@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { SingleBarChart } from "@/components/charts/single-bar-chart";
+import { QuickBatchButton } from "@/components/admin/quick-batch-button";
 import { PageHeader } from "@/components/shell/app-shell";
 import { SubscriptionBadge } from "@/components/ui/badge";
 import { LinkButton } from "@/components/ui/button";
@@ -87,6 +88,9 @@ export default async function AdminOverviewPage() {
                 <th scope="col" className="px-5 py-2 text-right font-medium">Clients</th>
                 <th scope="col" className="px-5 py-2 text-right font-medium">Scans 30 j</th>
                 <th scope="col" className="px-5 py-2 text-right font-medium">Stock QR</th>
+                <th scope="col" className="px-5 py-2">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody className="tabular-nums">
@@ -107,6 +111,11 @@ export default async function AdminOverviewPage() {
                     <span className={m.codes_available < 50 ? "font-medium text-critical" : undefined}>
                       {formatInt(m.codes_available)}
                     </span>
+                  </td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end">
+                      <QuickBatchButton merchantId={m.id} />
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -1,45 +1,31 @@
-"use server";
+import "server-only";
 
-import { getOrCreateDeviceId, hashDevice } from "@/lib/device";
+import { httpUrlOrNull } from "@/lib/http";
 import type { ClaimResult } from "@/lib/rpc-types";
 import { createAnonClient } from "@/lib/supabase/anon";
 import { uuidSchema } from "@/lib/validation";
 import { memberCode } from "@/lib/wallet/pass-content";
 import { syncWalletPass } from "@/lib/wallet/sync";
 
-export type ScanOutcome =
-  | { status: "invalid" | "already_scanned" | "merchant_inactive" | "error" }
-  | {
-      status: "ok";
-      isWinner: boolean;
-      redemptionCode: string | null;
-      scannedAt: string;
-      merchantName: string;
-      rewardDescription: string;
-      brandColor: string;
-      currentStamps: number;
-      stampsGoal: number;
-      isNewCustomer: boolean;
-      memberCode: string;
-      shareUrl: string | null;
-      googleSaveUrl: string | null;
-    };
+import type { ScanOutcome } from "./types";
 
 /**
- * Claims a single-use QR code for this device. Runs on an explicit user
- * gesture (never on page load) so link previews and prefetchers cannot burn
- * codes. The exactly-once guarantee lives in the `claim_qr_scan` RPC.
+ * The scan transaction. All of the money-relevant work happens atomically in
+ * the `claim_qr_scan` Postgres function (SECURITY DEFINER, anon-callable):
+ *   1. lock the QR row and verify it exists and is not scanned,
+ *   2. refuse inactive merchants without burning the code,
+ *   3. roll a CSPRNG number against the merchant's win_rate,
+ *   4. upsert the device's wallet and add a stamp,
+ *   5. flip the code to is_scanned = true (with winner + redemption code).
+ * The Wallet pass is then created/updated through the provider; a provider
+ * failure never undoes the scan (the next scan re-syncs).
  */
-export async function claimScan(code: string): Promise<ScanOutcome> {
-  const parsed = uuidSchema.safeParse(code);
-  if (!parsed.success) return { status: "invalid" };
+export async function claimScan(code: string, deviceHash: string): Promise<ScanOutcome> {
+  if (!uuidSchema.safeParse(code).success) return { status: "invalid" };
 
-  const deviceId = await getOrCreateDeviceId();
-  const supabase = createAnonClient();
-
-  const { data, error } = await supabase.rpc("claim_qr_scan", {
-    p_code: parsed.data,
-    p_device_hash: hashDevice(deviceId),
+  const { data, error } = await createAnonClient().rpc("claim_qr_scan", {
+    p_code: code,
+    p_device_hash: deviceHash,
   });
 
   if (error || !data) {
@@ -67,6 +53,10 @@ export async function claimScan(code: string): Promise<ScanOutcome> {
     },
   );
 
+  // Third-party URLs: only http(s) may reach the page's links and redirect.
+  const shareUrl = httpUrlOrNull(pass?.shareUrl);
+  const googleSaveUrl = httpUrlOrNull(pass?.googleSaveUrl);
+
   return {
     status: "ok",
     isWinner: result.is_winner,
@@ -79,7 +69,8 @@ export async function claimScan(code: string): Promise<ScanOutcome> {
     stampsGoal: result.merchant.stamps_goal,
     isNewCustomer: result.wallet.is_new,
     memberCode: memberCode(result.wallet.id),
-    shareUrl: pass?.shareUrl ?? null,
-    googleSaveUrl: pass?.googleSaveUrl ?? null,
+    passUrl: shareUrl ?? googleSaveUrl,
+    shareUrl,
+    googleSaveUrl,
   };
 }

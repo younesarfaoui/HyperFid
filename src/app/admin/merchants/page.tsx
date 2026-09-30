@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { QuickBatchButton } from "@/components/admin/quick-batch-button";
 import { PageHeader } from "@/components/shell/app-shell";
 import { SubscriptionBadge } from "@/components/ui/badge";
 import { LinkButton } from "@/components/ui/button";
@@ -41,6 +42,7 @@ export default async function MerchantsPage() {
                 <th scope="col" className="px-5 py-2 text-right font-medium">Taux de gain</th>
                 <th scope="col" className="px-5 py-2 font-medium">Statut</th>
                 <th scope="col" className="px-5 py-2 font-medium">Créé le</th>
+                <th scope="col" className="px-5 py-2 text-right font-medium">QR codes</th>
               </tr>
             </thead>
             <tbody>
@@ -61,11 +63,16 @@ export default async function MerchantsPage() {
                     <SubscriptionBadge status={m.subscription_status} />
                   </td>
                   <td className="px-5 py-3 text-ink-2">{formatDate(m.created_at)}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex justify-end">
+                      <QuickBatchButton merchantId={m.id} />
+                    </div>
+                  </td>
                 </tr>
               ))}
               {merchants.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-10 text-center text-ink-2">
+                  <td colSpan={6} className="px-5 py-10 text-center text-ink-2">
                     Aucun commerçant. Créez le premier pour générer ses QR codes.
                   </td>
                 </tr>

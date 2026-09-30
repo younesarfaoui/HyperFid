@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Confetti } from "@/components/scan/confetti";
 import { LiveClock } from "@/components/scan/live-clock";
@@ -9,10 +9,23 @@ import { StampProgress } from "@/components/scan/stamp-progress";
 import { WalletButtons } from "@/components/scan/wallet-buttons";
 import { Button } from "@/components/ui/button";
 import { readableOn } from "@/lib/color";
+import type { ScanFailureStatus, ScanOutcome, ScanSuccess } from "@/lib/scan/types";
 
-import { claimScan, type ScanOutcome } from "./actions";
+const REDIRECT_SECONDS = 3;
+const KNOWN_STATUSES = new Set<ScanOutcome["status"]>(["ok", "invalid", "already_scanned", "merchant_inactive", "error"]);
 
-const FAILURE_COPY: Record<Exclude<ScanOutcome["status"], "ok">, { title: string; body: string }> = {
+/** Claims the code through POST /api/scan/[uuid] (the only write path for a scan). */
+async function requestClaim(code: string): Promise<ScanOutcome> {
+  const response = await fetch(`/api/scan/${encodeURIComponent(code)}`, {
+    method: "POST",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  });
+  const body = (await response.json().catch(() => null)) as ScanOutcome | null;
+  return body && KNOWN_STATUSES.has(body.status) ? body : { status: "error" };
+}
+
+const FAILURE_COPY: Record<ScanFailureStatus, { title: string; body: string }> = {
   already_scanned: {
     title: "Code déjà utilisé",
     body: "Chaque QR code HyperFid ne peut être scanné qu'une seule fois.",
@@ -60,7 +73,7 @@ export function ScanReveal({
     claimStarted.current = true;
     setStarted(true);
     try {
-      setOutcome(await claimScan(code));
+      setOutcome(await requestClaim(code));
     } catch {
       setOutcome({ status: "error" });
     }
@@ -164,6 +177,12 @@ export function ScanReveal({
                 </p>
               ) : null}
               <StampProgress current={ok.currentStamps} goal={ok.stampsGoal} brandColor={brandColor} />
+              {/* Winners stay here: their redemption code must be shown at the counter. */}
+              {!ok.isWinner && ok.passUrl ? (
+                <div className="mt-5">
+                  <PassRedirect passUrl={ok.passUrl} />
+                </div>
+              ) : null}
               <div className="mt-5">
                 <WalletButtons shareUrl={ok.shareUrl} googleSaveUrl={ok.googleSaveUrl} />
               </div>
@@ -178,7 +197,34 @@ export function ScanReveal({
   );
 }
 
-function WinPanel({ outcome, brandColor }: { outcome: Extract<ScanOutcome, { status: "ok" }>; brandColor: string }) {
+/** Sends non-winners to their Wallet pass after a short, cancellable countdown. */
+function PassRedirect({ passUrl }: { passUrl: string }) {
+  const [secondsLeft, setSecondsLeft] = useState(REDIRECT_SECONDS);
+  const [cancelled, setCancelled] = useState(false);
+
+  useEffect(() => {
+    if (cancelled) return;
+    const id = window.setInterval(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => window.clearInterval(id);
+  }, [cancelled]);
+
+  useEffect(() => {
+    if (!cancelled && secondsLeft <= 0) window.location.assign(passUrl);
+  }, [cancelled, secondsLeft, passUrl]);
+
+  if (cancelled) return null;
+
+  return (
+    <div role="status" className="flex items-center justify-between gap-3 rounded-xl bg-brand-soft px-4 py-3 text-sm text-brand">
+      <span>Ajout de votre carte au Wallet dans {Math.max(secondsLeft, 0)} s…</span>
+      <button type="button" onClick={() => setCancelled(true)} className="shrink-0 font-medium underline">
+        Rester ici
+      </button>
+    </div>
+  );
+}
+
+function WinPanel({ outcome, brandColor }: { outcome: ScanSuccess; brandColor: string }) {
   const ink = readableOn(brandColor);
   return (
     <section

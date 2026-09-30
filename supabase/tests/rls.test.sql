@@ -227,6 +227,20 @@ begin
   assert (other->'kpis'->>'codes_total')::int = 0, 'TEST FAILED T16: analytics leak foreign data';
 end $$;
 
+-- T22: dashboard headline KPIs (the page's exact count queries) see the merchant's own data
+do $$
+begin
+  assert (select count(*) from public.qr_batches
+          where merchant_id = 'a0000000-0000-4000-8000-00000000000a' and is_scanned) = 2,
+    'TEST FAILED T22: own total scans';
+  assert (select count(*) from public.digital_wallets
+          where merchant_id = 'a0000000-0000-4000-8000-00000000000a' and last_scan_date >= now() - interval '30 days') = 1,
+    'TEST FAILED T22: own active wallets';
+  assert (select count(*) from public.qr_batches
+          where merchant_id = 'a0000000-0000-4000-8000-00000000000a' and is_winner) = 0,
+    'TEST FAILED T22: own total winners';
+end $$;
+
 reset role;
 
 -- ---------------------------------------------------------------------------
@@ -259,6 +273,18 @@ begin
     'TEST FAILED T13: rival redeemed a foreign win';
   assert public.redeem_stamp_card((select (r->'wallet'->>'id')::uuid from _win))->>'status' = 'not_found',
     'TEST FAILED T15: rival redeemed a foreign stamp card';
+
+  -- T22: a rival's dashboard counts can never include Mandy's scans, wallets or winners,
+  -- even when the query targets Mandy's merchant_id explicitly.
+  assert (select count(*) from public.qr_batches
+          where merchant_id = 'a0000000-0000-4000-8000-00000000000a' and is_scanned) = 0,
+    'TEST FAILED T22: rival counts foreign scans';
+  assert (select count(*) from public.digital_wallets
+          where merchant_id = 'a0000000-0000-4000-8000-00000000000a') = 0,
+    'TEST FAILED T22: rival counts foreign wallets';
+  assert (select count(*) from public.qr_batches
+          where merchant_id = 'a0000000-0000-4000-8000-00000000000a' and is_winner) = 0,
+    'TEST FAILED T22: rival counts foreign winners';
 end $$;
 reset role;
 

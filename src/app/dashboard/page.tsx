@@ -13,6 +13,34 @@ import type { MerchantAnalytics } from "@/lib/rpc-types";
 import { createClient } from "@/lib/supabase/server";
 
 const RANGES = [7, 30, 90] as const;
+const ACTIVE_WALLET_DAYS = 30;
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * All-time headline KPIs. Plain count queries through the RLS-bound client:
+ * the table policies restrict every row to the signed-in merchant's tenant,
+ * the merchant_id filter only helps the planner use its indexes.
+ */
+async function headlineKpis(supabase: Supabase, merchantId: string) {
+  const activeSince = new Date(Date.now() - ACTIVE_WALLET_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const codes = () => supabase.from("qr_batches").select("id", { count: "exact", head: true }).eq("merchant_id", merchantId);
+  const wallets = () =>
+    supabase.from("digital_wallets").select("id", { count: "exact", head: true }).eq("merchant_id", merchantId);
+
+  const results = await Promise.all([
+    codes().eq("is_scanned", true),
+    wallets().gte("last_scan_date", activeSince),
+    wallets(),
+    codes().eq("is_winner", true),
+    codes().eq("is_winner", true).not("redeemed_at", "is", null),
+  ]);
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw new Error(`Impossible de charger les indicateurs : ${failed.error.message}`);
+
+  const [totalScans, activeWallets, totalWallets, totalWinners, redeemedWinners] = results.map((r) => r.count ?? 0);
+  return { totalScans, activeWallets, totalWallets, totalWinners, redeemedWinners };
+}
 
 export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const { merchantId } = await requireMerchantAdmin();
@@ -20,7 +48,8 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
   const days = RANGES.find((d) => String(d) === daysParam) ?? 30;
 
   const supabase = await createClient();
-  const [{ data: analyticsData, error }, { data: recent }] = await Promise.all([
+  const [headline, { data: analyticsData, error }, { data: recent }] = await Promise.all([
+    headlineKpis(supabase, merchantId),
     supabase.rpc("merchant_analytics", { p_merchant_id: merchantId, p_days: days }),
     supabase
       .from("qr_batches")
@@ -60,11 +89,32 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         }
       />
 
+      <section aria-label="Indicateurs clés" className="grid gap-4 sm:grid-cols-3">
+        <StatTile
+          label="Scans totaux"
+          value={formatInt(headline.totalScans)}
+          detail={`sur ${plural(k.codes_total, "QR code imprimé", "QR codes imprimés")}`}
+        />
+        <StatTile
+          label={`Wallets actifs (${ACTIVE_WALLET_DAYS} j)`}
+          value={formatInt(headline.activeWallets)}
+          detail={`${plural(headline.totalWallets, "carte émise", "cartes émises")} au total`}
+        />
+        <StatTile
+          label="Gagnants totaux"
+          value={formatInt(headline.totalWinners)}
+          detail={plural(headline.redeemedWinners, "gain retiré", "gains retirés")}
+        />
+      </section>
+
+      <h2 className="mb-3 mt-8 text-sm font-semibold uppercase tracking-wide text-muted">
+        Sur les {days} derniers jours
+      </h2>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
-          label="Clients fidélisés"
-          value={formatInt(k.total_customers)}
-          detail={`+${plural(k.new_customers, "nouveau", "nouveaux")} sur ${days} j`}
+          label="Nouveaux clients"
+          value={formatInt(k.new_customers)}
+          detail={plural(k.total_customers, "client fidélisé", "clients fidélisés") + " au total"}
         />
         <StatTile
           label={`Scans (${days} j)`}

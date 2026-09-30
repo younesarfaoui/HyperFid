@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { BatchForm } from "@/components/admin/batch-form";
 import { InviteForm } from "@/components/admin/invite-form";
 import { MerchantForm } from "@/components/admin/merchant-form";
+import { QuickBatchButton } from "@/components/admin/quick-batch-button";
 import { PageHeader } from "@/components/shell/app-shell";
 import { SubscriptionBadge } from "@/components/ui/badge";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -20,6 +21,7 @@ export const metadata: Metadata = { title: "Commerçant" };
 export default async function MerchantDetailPage(props: PageProps<"/admin/merchants/[id]">) {
   await requireSuperAdmin();
   const { id } = await props.params;
+  const { batch: batchStatus } = await props.searchParams;
   if (!uuidSchema.safeParse(id).success) notFound();
 
   const supabase = await createClient();
@@ -40,7 +42,16 @@ export default async function MerchantDetailPage(props: PageProps<"/admin/mercha
             {merchant.category} · <SubscriptionBadge status={merchant.subscription_status} />
           </span>
         }
+        action={<QuickBatchButton merchantId={merchant.id} size="md" />}
       />
+
+      {batchStatus === "error" || batchStatus === "export_error" ? (
+        <p role="alert" className="mb-6 rounded-xl bg-critical-soft px-4 py-3 text-sm text-critical">
+          {batchStatus === "error"
+            ? "La génération du lot a échoué. Aucun code n'a été créé : réessayez."
+            : "Le lot a été créé mais le CSV n'a pas pu être téléchargé : utilisez le bouton « CSV » du lot ci-dessous."}
+        </p>
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">

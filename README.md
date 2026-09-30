@@ -6,7 +6,7 @@ Multi-tenant digital loyalty for Tunisian SMBs. A customer scans a single-use QR
 |---|---|---|
 | `/s/[code]` | Customers (anonymous) | Scratch card, instant-win roll, stamp card, Add-to-Wallet |
 | `/dashboard` | Merchant admins | Live retention analytics, win redemption, customers, settings |
-| `/admin` | Super admin (platform) | Tenants, subscriptions, win rates, QR batch generation (CSV + print), team invites |
+| `/admin` | Super admin (platform) | Tenants, subscriptions, win rates, one-click "Générer 100 QR" per merchant (instant CSV download), custom batches (CSV + print), team invites |
 
 **Stack:** Next.js 16 (App Router, `proxy.ts`), TypeScript, Tailwind CSS v4, Recharts · Supabase (Postgres + RLS, Auth, Realtime) · WalletWallet.dev for passes.
 
@@ -22,7 +22,7 @@ Browser ──► proxy.ts ──► Server Components (read via RLS)
 
 1. **The database owns every security boundary.** RLS isolates tenants, guard triggers enforce column-level rules, and the anonymous scan is a single RPC. The Next.js layer is thin; a bug there cannot widen access.
 2. **Exactly-once scans.** `claim_qr_scan` locks the QR row (`FOR UPDATE`), rolls the win with a CSPRNG (`gen_random_bytes`), upserts the device wallet, adds the stamp and flips the code, all in one transaction. With 20 concurrent claims on one code, exactly one succeeds.
-3. **No side effects on GET.** `/s/[code]` only reads (`get_qr_public`). The claim runs on the first scratch/tap, so WhatsApp/iMessage link previews can't burn codes.
+3. **No side effects on GET.** `/s/[code]` only reads (`get_qr_public`). The claim runs on the first scratch/tap as `POST /api/scan/[uuid]` (`GET` answers 405, cross-origin POSTs 403), so WhatsApp/iMessage link previews can't burn codes. The response carries the Wallet `passUrl`: non-winners are redirected to it after a 3 s countdown; winners stay on their redemption-code screen.
 4. **Device identity without login.** The proxy issues an `httpOnly` `hf_device` cookie (random UUID) on the landing page. Only its HMAC-SHA256 (`DEVICE_HASH_SECRET`) reaches the database.
 5. **Wallet sync is outside the transaction.** The DB is the source of truth. If the provider is down, the scan still counts and the next scan re-syncs the pass.
 
@@ -158,7 +158,8 @@ On the result screen, iOS gets **Add to Apple Wallet** (`shareUrl`), Android get
 src/
   proxy.ts                    session refresh, coarse auth redirect, device cookie on /s/*
   app/
-    s/[code]/                 public scan flow (page, claim action, scratch UI)
+    s/[code]/                 public scan page (scratch UI, calls the scan API)
+    api/scan/[uuid]/          POST: claim a code, sync the Wallet pass, return passUrl
     login/, auth/             sign-in, invite confirmation, set password, sign-out
     admin/                    super admin: overview, merchants, batches (CSV/print)
     dashboard/                merchant: analytics, redeem, customers, settings
