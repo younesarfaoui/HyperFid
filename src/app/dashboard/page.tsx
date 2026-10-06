@@ -4,6 +4,7 @@ import { DailyScansChart } from "@/components/charts/daily-scans-chart";
 import { SingleBarChart } from "@/components/charts/single-bar-chart";
 import { LiveScans } from "@/components/dashboard/live-scans";
 import { PageHeader } from "@/components/shell/app-shell";
+import { LinkButton } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatTile } from "@/components/ui/stat-tile";
 import { requireMerchantAdmin } from "@/lib/auth/guards";
@@ -93,7 +94,11 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         <StatTile
           label="Scans totaux"
           value={formatInt(headline.totalScans)}
-          detail={`sur ${plural(k.codes_total, "QR code imprimé", "QR codes imprimés")}`}
+          detail={
+            k.counter_scans > 0
+              ? `dont ${formatInt(k.counter_scans)} en mode caisse`
+              : `sur ${plural(k.codes_total, "QR code imprimé", "QR codes imprimés")}`
+          }
         />
         <StatTile
           label={`Wallets actifs (${ACTIVE_WALLET_DAYS} j)`}
@@ -162,18 +167,36 @@ export default async function DashboardPage(props: PageProps<"/dashboard">) {
         </Card>
 
         <Card>
-          <CardHeader title="Stock de QR codes" />
+          <CardHeader title={k.codes_total > 0 ? "Stock de QR codes" : "Mode caisse"} />
           <CardBody>
-            <p className="text-3xl font-semibold tracking-tight text-ink">{formatInt(stock)}</p>
-            <p className="mt-1 text-sm text-ink-2">
-              {stock < 2 ? "code disponible" : "codes disponibles"} sur {formatInt(k.codes_total)} (
-              {plural(k.codes_scanned, "scanné", "scannés")})
-            </p>
-            {stock < 100 ? (
-              <p className="mt-3 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">
-                <span aria-hidden>▲ </span>Stock bas : contactez HyperFid pour un nouveau lot.
-              </p>
-            ) : null}
+            {k.codes_total > 0 ? (
+              <>
+                <p className="text-3xl font-semibold tracking-tight text-ink">{formatInt(stock)}</p>
+                <p className="mt-1 text-sm text-ink-2">
+                  {stock < 2 ? "code imprimé disponible" : "codes imprimés disponibles"} sur {formatInt(k.codes_total)} (
+                  {plural(k.codes_scanned, "scanné", "scannés")})
+                </p>
+                {stock < 100 ? (
+                  <p className="mt-3 rounded-lg bg-warn-soft px-3 py-2 text-sm text-warn">
+                    <span aria-hidden>▲ </span>Stock bas : contactez HyperFid pour un nouveau lot, ou passez au{" "}
+                    <Link href="/dashboard/counter" className="font-medium underline">
+                      mode caisse
+                    </Link>{" "}
+                    (rien à imprimer).
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-ink-2">
+                  Pas de QR codes imprimés : vos clients scannent le code affiché sur votre téléphone ou tablette, à
+                  la caisse.
+                </p>
+                <LinkButton href="/dashboard/counter" variant="primary" className="mt-4">
+                  Ouvrir le mode caisse
+                </LinkButton>
+              </>
+            )}
           </CardBody>
         </Card>
       </div>

@@ -12,7 +12,14 @@ import { readableOn } from "@/lib/color";
 import type { ScanFailureStatus, ScanOutcome, ScanSuccess } from "@/lib/scan/types";
 
 const REDIRECT_SECONDS = 3;
-const KNOWN_STATUSES = new Set<ScanOutcome["status"]>(["ok", "invalid", "already_scanned", "merchant_inactive", "error"]);
+const KNOWN_STATUSES = new Set<ScanOutcome["status"]>([
+  "ok",
+  "invalid",
+  "already_scanned",
+  "merchant_inactive",
+  "expired",
+  "error",
+]);
 
 /** Claims the code through POST /api/scan/[uuid] (the only write path for a scan). */
 async function requestClaim(code: string): Promise<ScanOutcome> {
@@ -34,6 +41,10 @@ const FAILURE_COPY: Record<ScanFailureStatus, { title: string; body: string }> =
     title: "Programme en pause",
     body: "Ce programme de fidélité est momentanément indisponible. Votre code reste valable.",
   },
+  expired: {
+    title: "Code expiré",
+    body: "Ce QR code n'est plus valable. Demandez un nouveau code au comptoir.",
+  },
   invalid: {
     title: "QR code invalide",
     body: "Ce code n'est pas reconnu. Vérifiez que vous scannez bien un QR code HyperFid.",
@@ -44,7 +55,7 @@ const FAILURE_COPY: Record<ScanFailureStatus, { title: string; body: string }> =
   },
 };
 
-type InitialStatus = "available" | "already_scanned" | "merchant_inactive";
+type InitialStatus = "available" | "already_scanned" | "merchant_inactive" | "expired";
 
 /**
  * The page's server status is only the *initial* state: once the visitor has

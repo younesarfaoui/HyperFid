@@ -10,7 +10,7 @@ export type PublicMerchant = {
 
 export type QrPublicResult =
   | { status: "invalid" }
-  | { status: "available" | "already_scanned" | "merchant_inactive"; merchant: PublicMerchant };
+  | { status: "available" | "already_scanned" | "merchant_inactive" | "expired"; merchant: PublicMerchant };
 
 export type ClaimWallet = {
   id: string;
@@ -25,7 +25,7 @@ export type ClaimWallet = {
 export type ClaimResult =
   | { status: "invalid" }
   | {
-      status: "already_scanned" | "merchant_inactive";
+      status: "already_scanned" | "merchant_inactive" | "expired";
       merchant: { name: string; brand_color: string };
     }
   | {
@@ -51,6 +51,10 @@ export type RedeemStampCardResult =
   | { status: "insufficient_stamps"; current_stamps: number; stamps_goal: number }
   | { status: "redeemed"; current_stamps: number; rewards_redeemed: number; stamps_goal: number };
 
+export type IssueCounterCodeResult =
+  | { status: "ok"; id: string; expires_at: string }
+  | { status: "merchant_inactive" | "too_many" };
+
 export type MerchantAnalytics = {
   range: { days: number; from: string; to: string };
   kpis: {
@@ -63,8 +67,11 @@ export type MerchantAnalytics = {
     wins: number;
     wins_redeemed: number;
     cards_completed: number;
+    /** Printed codes only; counter codes are not inventory. */
     codes_total: number;
     codes_scanned: number;
+    /** Scans of codes shown on the counter screen ("Mode caisse"). */
+    counter_scans: number;
   };
   daily: { day: string; new: number; returning: number; wins: number }[];
   frequency: { label: string; customers: number }[];

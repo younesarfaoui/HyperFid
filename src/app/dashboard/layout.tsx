@@ -25,6 +25,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
       email={session.email}
       nav={[
         { href: "/dashboard", label: "Tableau de bord", exact: true },
+        { href: "/dashboard/counter", label: "Mode caisse" },
         { href: "/dashboard/redeem", label: "Valider un gain" },
         { href: "/dashboard/customers", label: "Clients" },
         { href: "/dashboard/settings", label: "Paramètres" },

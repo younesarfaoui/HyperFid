@@ -318,6 +318,116 @@ end $$;
 reset role;
 
 -- ---------------------------------------------------------------------------
+-- T23: counter mode ("Mode caisse"): codes issued to the merchant's screen
+-- ---------------------------------------------------------------------------
+create temporary table _counter (r jsonb);
+grant all on _counter to anon, authenticated;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-a000-000000000002","role":"authenticated"}';
+do $$
+declare
+  r jsonb;
+  k jsonb;
+  v_id uuid;
+begin
+  r := public.issue_counter_code('a0000000-0000-4000-8000-00000000000a');
+  assert r->>'status' = 'ok', 'TEST FAILED T23: merchant could not issue a counter code ' || r::text;
+  assert (r->>'expires_at')::timestamptz between now() + interval '4 minutes' and now() + interval '6 minutes',
+    'TEST FAILED T23: counter code validity ' || r::text;
+  insert into _counter values (r);
+  v_id := (r->>'id')::uuid;
+
+  begin
+    perform public.issue_counter_code('b0000000-0000-4000-8000-00000000000b');
+    raise exception 'TEST FAILED T23: merchant issued a code for a rival';
+  exception when insufficient_privilege then null;
+  end;
+
+  begin
+    update public.qr_batches set expires_at = now() + interval '1 year' where id = v_id;
+    raise exception 'TEST FAILED T23: merchant extended a counter code';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- Counter codes are not printed stock and never show up as a batch.
+  k := public.merchant_analytics('a0000000-0000-4000-8000-00000000000a', 30)->'kpis';
+  assert (k->>'codes_total')::int = 4 and (k->>'codes_scanned')::int = 3,
+    'TEST FAILED T23: counter code counted as printed stock ' || k::text;
+  assert (select count(*) from public.qr_batch_summaries) = 1, 'TEST FAILED T23: counter codes listed as a batch';
+end $$;
+reset role;
+
+-- Rival cannot see Mandy's counter code; orphan cannot issue anything.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-a000-000000000003","role":"authenticated"}';
+do $$
+begin
+  assert (select count(*) from public.qr_batches where id = (select (r->>'id')::uuid from _counter)) = 0,
+    'TEST FAILED T23: rival sees a foreign counter code';
+end $$;
+reset role;
+
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare
+  v_id uuid := (select (r->>'id')::uuid from _counter);
+  r jsonb;
+begin
+  begin
+    perform public.issue_counter_code('a0000000-0000-4000-8000-00000000000a');
+    raise exception 'TEST FAILED T23: anon issued a counter code';
+  exception when insufficient_privilege then null;
+  end;
+
+  assert public.get_qr_public(v_id)->>'status' = 'available', 'TEST FAILED T23: fresh counter code not available';
+  r := public.claim_qr_scan(v_id, repeat('c', 64));
+  assert r->>'status' = 'ok', 'TEST FAILED T23: fresh counter code not claimable ' || r::text;
+  assert public.claim_qr_scan(v_id, repeat('c', 64))->>'status' = 'already_scanned',
+    'TEST FAILED T23: counter code claimed twice';
+end $$;
+reset role;
+
+-- An expired counter code answers 'expired' and is not burned.
+insert into public.qr_batches (id, merchant_id, batch_id, batch_label, expires_at) values
+  ('a2000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-00000000000a',
+   'a0000000-0000-4000-8000-00000000000a', 'Caisse', now() - interval '1 second');
+
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+begin
+  assert public.get_qr_public('a2000000-0000-4000-8000-000000000001')->>'status' = 'expired',
+    'TEST FAILED T23: expired code not reported as expired';
+  assert public.claim_qr_scan('a2000000-0000-4000-8000-000000000001', repeat('c', 64))->>'status' = 'expired',
+    'TEST FAILED T23: expired code accepted';
+end $$;
+reset role;
+
+do $$
+begin
+  assert not (select is_scanned from public.qr_batches where id = 'a2000000-0000-4000-8000-000000000001'),
+    'TEST FAILED T23: expired code was burned';
+end $$;
+
+-- Super admin: inactive merchants get no codes; the live-code cap holds.
+insert into public.qr_batches (merchant_id, batch_id, batch_label, expires_at)
+select 'd0000000-0000-4000-8000-00000000000d', 'd0000000-0000-4000-8000-00000000000d', 'Caisse', now() + interval '5 minutes'
+from generate_series(1, 30);
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-4000-a000-000000000001","role":"authenticated"}';
+do $$
+begin
+  assert public.issue_counter_code('c0000000-0000-4000-8000-00000000000c')->>'status' = 'merchant_inactive',
+    'TEST FAILED T23: suspended merchant got a counter code';
+  assert public.issue_counter_code('d0000000-0000-4000-8000-00000000000d')->>'status' = 'too_many',
+    'TEST FAILED T23: live counter code cap not enforced';
+end $$;
+reset role;
+
+-- ---------------------------------------------------------------------------
 -- Orphan merchant admin (no merchant attached) sees nothing
 -- ---------------------------------------------------------------------------
 set local role authenticated;

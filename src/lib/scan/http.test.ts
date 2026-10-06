@@ -8,6 +8,7 @@ describe("scanHttpStatus", () => {
     expect(scanHttpStatus("invalid")).toBe(404);
     expect(scanHttpStatus("already_scanned")).toBe(409);
     expect(scanHttpStatus("merchant_inactive")).toBe(403);
+    expect(scanHttpStatus("expired")).toBe(410);
     expect(scanHttpStatus("error")).toBe(502);
   });
 });

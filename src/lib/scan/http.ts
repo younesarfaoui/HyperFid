@@ -11,6 +11,8 @@ export function scanHttpStatus(status: ScanOutcome["status"]): number {
       return 409;
     case "merchant_inactive":
       return 403;
+    case "expired":
+      return 410;
     case "error":
       return 502;
   }

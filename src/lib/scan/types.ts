@@ -1,6 +1,6 @@
 // Client-safe types for the scan flow (shared by the API route and the scan page).
 
-export type ScanFailureStatus = "invalid" | "already_scanned" | "merchant_inactive" | "error";
+export type ScanFailureStatus = "invalid" | "already_scanned" | "merchant_inactive" | "expired" | "error";
 
 export type ScanSuccess = {
   status: "ok";

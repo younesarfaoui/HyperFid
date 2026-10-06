@@ -5,7 +5,7 @@ Multi-tenant digital loyalty for Tunisian SMBs. A customer scans a single-use QR
 | Area | Who | What |
 |---|---|---|
 | `/s/[code]` | Customers (anonymous) | Scratch card, instant-win roll, stamp card, Add-to-Wallet |
-| `/dashboard` | Merchant admins | Live retention analytics, win redemption, customers, settings |
+| `/dashboard` | Merchant admins | Live retention analytics, **Mode caisse** (QR on the counter screen, nothing to print), win redemption, customers, settings |
 | `/admin` | Super admin (platform) | Tenants, subscriptions, win rates, one-click "Générer 100 QR" per merchant (instant CSV download), custom batches (CSV + print), team invites |
 
 **Stack:** Next.js 16 (App Router, `proxy.ts`), TypeScript, Tailwind CSS v4, Recharts · Supabase (Postgres + RLS, Auth, Realtime) · WalletWallet.dev for passes.
@@ -26,13 +26,24 @@ Browser ──► proxy.ts ──► Server Components (read via RLS)
 4. **Device identity without login.** The proxy issues an `httpOnly` `hf_device` cookie (random UUID) on the landing page. Only its HMAC-SHA256 (`DEVICE_HASH_SECRET`) reaches the database.
 5. **Wallet sync is outside the transaction.** The DB is the source of truth. If the provider is down, the scan still counts and the next scan re-syncs the pass.
 
-### Data model (`supabase/migrations/20260929000000_init.sql`)
+### Two ways to hand out codes
+
+| | Printed batches | Mode caisse (`/dashboard/counter`) |
+|---|---|---|
+| Where the QR lives | Cups, receipts, boxes (CSV / print page) | The merchant's phone or tablet at the counter |
+| One code = | One product | One customer at the till |
+| Validity | Until scanned | Until scanned, max 5 min (the screen swaps it every 2 min) |
+| Anti-fraud | Single use | Single use + expiry: a photo of the screen is useless minutes later |
+
+The counter screen swaps to the next customer's code as soon as the shown one is scanned (Supabase Realtime, with polling as a fallback). It keeps the tablet awake and has a full-screen mode. An expired code answers `expired` and is **not** burned. Counter codes don't count as printed stock.
+
+### Data model (`supabase/migrations/`)
 
 | Table | Purpose |
 |---|---|
 | `merchants` | Tenant: `win_rate` (%), `reward_description`, `subscription_status`, `stamps_goal`, `brand_color` |
 | `profiles` | `role` (`super_admin` \| `merchant_admin`), `merchant_id`. Created by a trigger on `auth.users` from **app_metadata only** |
-| `qr_batches` | One row per physical single-use code: `batch_id`, `is_scanned`, `scan_date`, `is_winner`, `wallet_id`, `redemption_code`, `redeemed_at` |
+| `qr_batches` | One row per single-use code (printed, or shown on the counter screen): `batch_id`, `is_scanned`, `scan_date`, `is_winner`, `wallet_id`, `redemption_code`, `redeemed_at`, `expires_at` (counter codes only) |
 | `digital_wallets` | One per device per merchant: `device_fingerprint` (HMAC), `current_stamps`, `rewards_redeemed`, pass serial/URLs |
 
 > The spec's `qr_batches.uuid` column is named `id` for consistency (and to avoid `uuid uuid`).
@@ -58,6 +69,7 @@ Browser ──► proxy.ts ──► Server Components (read via RLS)
 | `get_qr_public(code)` | definer | anon: landing page (never exposes `is_winner`) |
 | `claim_qr_scan(code, device_hash)` | definer | anon: the scan |
 | `generate_qr_batch(merchant, qty ≤ 5000, label)` | invoker | super admin |
+| `issue_counter_code(merchant)` | definer + ownership check | merchant (counter screen) / super admin |
 | `redeem_win(merchant, code)` | invoker (RLS + guard) | merchant / super admin |
 | `redeem_stamp_card(wallet)` | definer + ownership check | merchant / super admin |
 | `merchant_analytics(merchant, days)` | invoker (RLS-scoped) | dashboards |
@@ -162,7 +174,7 @@ src/
     api/scan/[uuid]/          POST: claim a code, sync the Wallet pass, return passUrl
     login/, auth/             sign-in, invite confirmation, set password, sign-out
     admin/                    super admin: overview, merchants, batches (CSV/print)
-    dashboard/                merchant: analytics, redeem, customers, settings
+    dashboard/                merchant: analytics, mode caisse (counter/), redeem, customers, settings
   components/                 ui primitives, charts (Recharts), scan & shell components
   lib/
     supabase/                 server / browser / anon / admin clients + proxy helper

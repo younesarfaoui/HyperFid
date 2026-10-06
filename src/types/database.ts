@@ -145,6 +145,7 @@ export type Database = {
           wallet_id: string | null;
           redemption_code: string | null;
           redeemed_at: string | null;
+          expires_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -158,6 +159,7 @@ export type Database = {
           wallet_id?: string | null;
           redemption_code?: string | null;
           redeemed_at?: string | null;
+          expires_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -171,6 +173,7 @@ export type Database = {
           wallet_id?: string | null;
           redemption_code?: string | null;
           redeemed_at?: string | null;
+          expires_at?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -218,6 +221,10 @@ export type Database = {
       generate_qr_batch: {
         Args: { p_merchant_id: string; p_quantity: number; p_label?: string };
         Returns: string;
+      };
+      issue_counter_code: {
+        Args: { p_merchant_id: string };
+        Returns: Json;
       };
       redeem_win: {
         Args: { p_merchant_id: string; p_code: string };
