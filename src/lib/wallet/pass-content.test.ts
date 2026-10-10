@@ -36,10 +36,23 @@ describe("buildWalletWalletPayload", () => {
     expect(payload.headerFields[0].value).toBe("HF-0F3C9A1E");
   });
 
+  it("shows how many stamps are left before the reward", () => {
+    const payload = buildWalletWalletPayload(base);
+    expect(payload.secondaryFields[1]).toMatchObject({ label: "ENCORE", value: "7 tampons" });
+    expect(buildWalletWalletPayload({ ...base, currentStamps: 9 }).secondaryFields[1].value).toBe("1 tampon");
+  });
+
+  it("prints the online card link on the back, when known", () => {
+    expect(buildWalletWalletPayload(base).backFields.map((f) => f.label)).not.toContain("Ma carte en ligne");
+    const withLink = buildWalletWalletPayload({ ...base, cardUrl: "https://app.hyperfid.tn/ma-carte" });
+    expect(withLink.backFields).toContainEqual({ label: "Ma carte en ligne", value: "https://app.hyperfid.tn/ma-carte" });
+  });
+
   it("announces a completed card", () => {
     const payload = buildWalletWalletPayload({ ...base, currentStamps: 10 });
     expect(payload.secondaryFields[0].label).toBe("CARTE COMPLÈTE");
     expect(payload.secondaryFields[0].value).toContain("à récupérer");
+    expect(payload.secondaryFields).toHaveLength(1);
   });
 
   it("never leaks the device fingerprint or internal ids beyond the wallet id", () => {

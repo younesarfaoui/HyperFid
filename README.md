@@ -5,6 +5,7 @@ Multi-tenant digital loyalty for Tunisian SMBs. A customer scans a single-use QR
 | Area | Who | What |
 |---|---|---|
 | `/s/[code]` | Customers (anonymous) | Scratch card, instant-win roll, stamp card, Add-to-Wallet |
+| `/ma-carte` | Customers (anonymous) | "My cards": stamp balance of every loyalty card held by this browser (device cookie), no login |
 | `/dashboard` | Merchant admins | Live retention analytics, **Mode caisse** (QR on the counter screen, nothing to print), win redemption, customers, settings |
 | `/admin` | Super admin (platform) | Tenants, subscriptions, win rates, one-click "Générer 100 QR" per merchant (instant CSV download), custom batches (CSV + print), team invites |
 
@@ -70,6 +71,7 @@ The counter screen swaps to the next customer's code as soon as the shown one is
 | `claim_qr_scan(code, device_hash)` | definer | anon: the scan |
 | `generate_qr_batch(merchant, qty ≤ 5000, label)` | invoker | super admin |
 | `issue_counter_code(merchant)` | definer + ownership check | merchant (counter screen) / super admin |
+| `get_my_cards(device_hash)` | definer, read-only | anon: `/ma-carte` (progress only, no ids) |
 | `redeem_win(merchant, code)` | invoker (RLS + guard) | merchant / super admin |
 | `redeem_stamp_card(wallet)` | definer + ownership check | merchant / super admin |
 | `merchant_analytics(merchant, days)` | invoker (RLS-scoped) | dashboards |
@@ -162,6 +164,8 @@ where id = (select id from auth.users where email = 'you@example.com');
 - **`walletwallet.ts`:** `POST /api/passes` returns `serialNumber`, `shareUrl`, `googleSaveUrl` and `applePass`. `PUT /api/passes/{serial}` pushes stamp updates to every device that holds the pass. Payload mapping is in `pass-content.ts`.
 - **`mock.ts`:** local development. Links go to `/wallet-preview/[serial]`.
 
+The card shows the balance (`TAMPONS 3 / 10`), what is left (`ENCORE 7 tampons`), the reward, the member code, and a link to `/ma-carte` on the back. Each stamp update carries a lock-screen message (`changeMessage`). That behaviour is not yet verified against the live API: run `npm run wallet:smoke`.
+
 On the result screen, iOS gets **Add to Apple Wallet** (`shareUrl`), Android gets **Google Wallet** (`googleSaveUrl`), and desktop gets both.
 
 ## Project structure
@@ -171,6 +175,7 @@ src/
   proxy.ts                    session refresh, coarse auth redirect, device cookie on /s/*
   app/
     s/[code]/                 public scan page (scratch UI, calls the scan API)
+    ma-carte/                 public "my cards" page (balance per merchant, from the device cookie)
     api/scan/[uuid]/          POST: claim a code, sync the Wallet pass, return passUrl
     login/, auth/             sign-in, invite confirmation, set password, sign-out
     admin/                    super admin: overview, merchants, batches (CSV/print)

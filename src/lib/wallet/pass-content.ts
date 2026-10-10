@@ -27,12 +27,18 @@ export function buildWalletWalletPayload(input: LoyaltyPassInput) {
     },
   ];
 
+  const remaining = Math.max(input.stampsGoal - input.currentStamps, 0);
+
   const secondaryFields: PassField[] = [
     {
       label: complete ? "CARTE COMPLÈTE" : "RÉCOMPENSE",
       value: complete ? `${input.rewardDescription} à récupérer` : input.rewardDescription,
     },
   ];
+  // How far the next reward is: the number a customer glances at in the Wallet.
+  if (!complete) {
+    secondaryFields.push({ label: "ENCORE", value: `${remaining} ${remaining > 1 ? "tampons" : "tampon"}` });
+  }
 
   const headerFields: PassField[] = [{ label: "MEMBRE", value: memberCode(input.walletId) }];
 
@@ -43,6 +49,7 @@ export function buildWalletWalletPayload(input: LoyaltyPassInput) {
       value: `Scannez le QR code HyperFid à chaque achat chez ${input.merchantName}. ${input.stampsGoal} tampons = ${input.rewardDescription}.`,
     },
   ];
+  if (input.cardUrl) backFields.push({ label: "Ma carte en ligne", value: input.cardUrl });
 
   return {
     logoText: input.merchantName,

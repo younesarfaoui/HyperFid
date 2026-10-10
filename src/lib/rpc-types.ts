@@ -55,6 +55,20 @@ export type IssueCounterCodeResult =
   | { status: "ok"; id: string; expires_at: string }
   | { status: "merchant_inactive" | "too_many" };
 
+/** One loyalty card held by a device (see get_my_cards). No internal ids on purpose. */
+export type MyCard = {
+  merchant_name: string;
+  category: string;
+  brand_color: string;
+  reward_description: string;
+  stamps_goal: number;
+  current_stamps: number;
+  rewards_redeemed: number;
+  last_scan_date: string | null;
+  pass_share_url: string | null;
+  google_save_url: string | null;
+};
+
 export type MerchantAnalytics = {
   range: { days: number; from: string; to: string };
   kpis: {

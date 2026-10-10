@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { Confetti } from "@/components/scan/confetti";
@@ -197,7 +198,12 @@ export function ScanReveal({
               <div className="mt-5">
                 <WalletButtons shareUrl={ok.shareUrl} googleSaveUrl={ok.googleSaveUrl} />
               </div>
-              <p className="mt-3 text-center text-xs text-muted">
+              <p className="mt-4 text-center text-sm">
+                <Link href="/ma-carte" className="font-medium text-brand underline">
+                  Voir toutes mes cartes
+                </Link>
+              </p>
+              <p className="mt-2 text-center text-xs text-muted">
                 Membre {ok.memberCode} · aucune application ni inscription requise
               </p>
             </div>

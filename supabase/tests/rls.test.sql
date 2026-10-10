@@ -428,6 +428,40 @@ end $$;
 reset role;
 
 -- ---------------------------------------------------------------------------
+-- T24: "Ma carte": a device reads its own loyalty cards, and only those
+-- ---------------------------------------------------------------------------
+insert into public.digital_wallets (device_fingerprint, merchant_id, current_stamps, last_scan_date) values
+  (repeat('e', 64), 'c0000000-0000-4000-8000-00000000000c', 3, now() - interval '1 day'),
+  (repeat('e', 64), 'b0000000-0000-4000-8000-00000000000b', 5, now());
+
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare
+  mine   jsonb := public.get_my_cards(repeat('a', 64));
+  multi  jsonb := public.get_my_cards(repeat('e', 64));
+begin
+  assert jsonb_array_length(mine) = 1, 'TEST FAILED T24: expected one card ' || mine::text;
+  assert mine->0->>'merchant_name' = 'Mandy Test Cafe', 'TEST FAILED T24: wrong merchant ' || mine::text;
+  assert (mine->0->>'current_stamps')::int = 2 and (mine->0->>'stamps_goal')::int = 10,
+    'TEST FAILED T24: wrong balance ' || mine::text;
+  assert not (mine::text ~ '"(id|wallet_id|merchant_id|device_fingerprint)"'),
+    'TEST FAILED T24: card leaks internal ids ' || mine::text;
+
+  assert public.get_my_cards(repeat('d', 64)) = '[]'::jsonb, 'TEST FAILED T24: unknown device sees cards';
+  assert public.get_my_cards('not-a-hash') = '[]'::jsonb, 'TEST FAILED T24: malformed hash accepted';
+  assert public.get_my_cards(upper(repeat('a', 64))) = '[]'::jsonb, 'TEST FAILED T24: non-canonical hash accepted';
+  assert public.get_my_cards(null) = '[]'::jsonb, 'TEST FAILED T24: null hash accepted';
+
+  -- Several merchants, most recent visit first; a paused merchant's card stays visible.
+  assert jsonb_array_length(multi) = 2, 'TEST FAILED T24: expected two cards ' || multi::text;
+  assert multi->0->>'merchant_name' = 'Rival Pizza' and multi->1->>'merchant_name' = 'Suspended Snack',
+    'TEST FAILED T24: cards not ordered by last visit ' || multi::text;
+  assert (multi->1->>'current_stamps')::int = 3, 'TEST FAILED T24: paused merchant card lost';
+end $$;
+reset role;
+
+-- ---------------------------------------------------------------------------
 -- Orphan merchant admin (no merchant attached) sees nothing
 -- ---------------------------------------------------------------------------
 set local role authenticated;

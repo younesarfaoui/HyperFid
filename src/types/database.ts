@@ -226,6 +226,10 @@ export type Database = {
         Args: { p_merchant_id: string };
         Returns: Json;
       };
+      get_my_cards: {
+        Args: { p_device_hash: string };
+        Returns: Json;
+      };
       redeem_win: {
         Args: { p_merchant_id: string; p_code: string };
         Returns: Json;

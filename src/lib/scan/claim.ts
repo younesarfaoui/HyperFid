@@ -1,5 +1,6 @@
 import "server-only";
 
+import { myCardUrl } from "@/lib/env";
 import { httpUrlOrNull } from "@/lib/http";
 import type { ClaimResult } from "@/lib/rpc-types";
 import { createAnonClient } from "@/lib/supabase/anon";
@@ -45,6 +46,7 @@ export async function claimScan(code: string, deviceHash: string): Promise<ScanO
       currentStamps: result.wallet.current_stamps,
       stampsGoal: result.merchant.stamps_goal,
       rewardsRedeemed: result.wallet.rewards_redeemed,
+      cardUrl: myCardUrl(),
     },
     {
       serialNumber: result.wallet.pass_serial,

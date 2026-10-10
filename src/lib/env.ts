@@ -19,3 +19,8 @@ export function supabaseAnonKey(): string {
 export function appUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 }
+
+/** Public page where a customer checks his stamp cards (printed on the Wallet card). */
+export function myCardUrl(): string {
+  return `${appUrl()}/ma-carte`;
+}

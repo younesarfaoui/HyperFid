@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireMerchantAdmin } from "@/lib/auth/guards";
+import { myCardUrl } from "@/lib/env";
 import { failure, success, type FormState } from "@/lib/form-state";
 import { formatDateTime } from "@/lib/format";
 import type { RedeemStampCardResult, RedeemWinResult } from "@/lib/rpc-types";
@@ -98,6 +99,7 @@ export async function redeemStampCard(walletId: string): Promise<void> {
           currentStamps: wallet.current_stamps,
           stampsGoal: merchant.stamps_goal,
           rewardsRedeemed: wallet.rewards_redeemed,
+          cardUrl: myCardUrl(),
         },
         {
           serialNumber: wallet.pass_serial,

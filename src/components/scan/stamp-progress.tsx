@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { stampMessage } from "@/lib/stamp-message";
 
 export function StampProgress({
   current,
@@ -10,7 +11,7 @@ export function StampProgress({
   brandColor: string;
 }) {
   const filled = Math.min(current, goal);
-  const complete = current >= goal;
+  const { tone, text } = stampMessage(current, goal);
 
   return (
     <div>
@@ -37,15 +38,17 @@ export function StampProgress({
           );
         })}
       </ol>
-      {complete ? (
-        <p className="mt-3 rounded-lg bg-good-soft px-3 py-2 text-sm font-medium text-good">
-          Carte complète ! Présentez-la au comptoir pour obtenir votre récompense.
-        </p>
-      ) : (
-        <p className="mt-3 text-sm text-ink-2">
-          Encore {goal - filled} {goal - filled > 1 ? "passages" : "passage"} avant votre récompense.
-        </p>
-      )}
+      <p
+        className={cn(
+          "mt-3 text-sm",
+          tone === "complete" && "rounded-lg bg-good-soft px-3 py-2 font-medium text-good",
+          tone === "almost" && "rounded-lg bg-brand-soft px-3 py-2 font-medium text-brand",
+          tone === "halfway" && "font-medium text-ink",
+          tone === "normal" && "text-ink-2",
+        )}
+      >
+        {text}
+      </p>
     </div>
   );
 }

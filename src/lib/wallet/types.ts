@@ -7,6 +7,8 @@ export type LoyaltyPassInput = {
   currentStamps: number;
   stampsGoal: number;
   rewardsRedeemed: number;
+  /** Public "Ma carte" page, shown on the back of the card. */
+  cardUrl?: string;
 };
 
 export type PassRecord = {
